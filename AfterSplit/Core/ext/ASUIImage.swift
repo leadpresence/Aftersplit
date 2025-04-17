@@ -1,7 +1,7 @@
 import Foundation
 import SwiftUI
 
-extension ASUIImage {
+extension UIImage {
     func resized(to size: CGSize) -> UIImage {
         UIGraphicsBeginImageContextWithOptions(size, false, 0.0)
         defer { UIGraphicsEndImageContext() }

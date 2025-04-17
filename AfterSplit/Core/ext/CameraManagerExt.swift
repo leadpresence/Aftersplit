@@ -2,7 +2,7 @@
 //  CameraManager.swift
 //  AfterSplit
 //
-//  Created by Kehinde Akeredolu on 12/04/2025.
+//  Created by Chibueze Felix on 12/04/2025.
 //
 
 

@@ -1,3 +1,5 @@
+import SwiftUI
+
 enum SplitStyle: String, CaseIterable, Identifiable {
     case straight
     case diagonal

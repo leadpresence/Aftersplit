@@ -2,7 +2,7 @@
 //  Item.swift
 //  AfterSplit
 //
-//  Created by Kehinde Akeredolu on 02/03/2025.
+//  Created by Chibueze Felix on 02/03/2025.
 //
 
 import Foundation

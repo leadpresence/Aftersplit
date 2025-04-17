@@ -1,4 +1,7 @@
-struct Video {
+import SwiftUI
+
+
+struct Video:Identifiable {
     let id: UUID
     let url: URL
     let duration: TimeInterval

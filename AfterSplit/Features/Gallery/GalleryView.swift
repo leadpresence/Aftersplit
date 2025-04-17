@@ -1,4 +1,12 @@
-{
+//
+//  GalleryView.swift
+//  AfterSplit
+//
+//  Created by Chibueze Felix on 12/04/2025.
+//
+
+import SwiftUI
+struct GalleryView: View {
     @Environment(\.presentationMode) var presentationMode
     @StateObject private var galleryViewModel = GalleryViewModel(
         cameraRepository: CameraRepository(

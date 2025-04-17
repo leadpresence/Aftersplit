@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CADisableMinimumFrameDurationOnPhone</key>
+    <true/>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>$(DEVELOPMENT_LANGUAGE)</string>
+    <key>CFBundleDisplayName</key>
+    <string>AftaSplit</string>
+    <key>CFBundleIdentifier</key>
+    <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>AftaSplit</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>ITSAppUsesNonExemptEncryption</key>
+    <false/>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+    <string>AfterSplit needs permission to save photos and videos to your</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+	<string>AfterSplit needs photo library access to save your captured media</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>AfterSplit needs microphone access to record videos with sound</string>
+    <key>NSCameraUsageDescription</key>
+    <string>"AfterSplit needs camera access to capture dual camera photos and videos</string>
+</dict>
+</plist>
