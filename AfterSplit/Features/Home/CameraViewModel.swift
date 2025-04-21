@@ -25,8 +25,9 @@ class CameraViewModel: ObservableObject {
         self.cameraUseCase = cameraUseCase
         
         // Start a timer to update the preview frames
-        startPreviewUpdates()
+        setupCamera()
     }
+    
     
     // Setup camera session
     func setupCamera() {

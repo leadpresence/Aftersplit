@@ -36,7 +36,6 @@
 				Features/ASVideoPlayer/ASVideoPlayerView.swift = "`";
 			};
 			membershipExceptions = (
-				AssetCatalog/Untitled.swift,
 				Info.plist,
 			);
 			target = C7F326C02D7441B000B0179E /* AfterSplit */;

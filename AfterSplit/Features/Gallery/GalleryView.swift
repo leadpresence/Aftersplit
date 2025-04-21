@@ -9,9 +9,7 @@ import SwiftUI
 struct GalleryView: View {
     @Environment(\.presentationMode) var presentationMode
     @StateObject private var galleryViewModel = GalleryViewModel(
-        cameraRepository: CameraRepository(
-            storageService: CoreDataStorageService()
-        )
+        cameraRepository: DefaultCameraRepository()
     )
     @State private var selectedTab = 0
     

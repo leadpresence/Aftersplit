@@ -40,85 +40,89 @@ class CameraManager: NSObject, CameraManagerProtocol, AVCapturePhotoCaptureDeleg
     // Video and image output processing queue
     private let processingQueue = DispatchQueue(label: "com.aftersplit.processingQueue", qos: .userInitiated)
     
+    // MARK: - Initialization
+       override init() {
+           super.init()
+       }
+    
     // MARK: - Setup
     
-    private func checkPermissions() {
-     
-    }
+    private func requestCameraPermission() async -> Bool {
+          return await withCheckedContinuation { continuation in
+              AVCaptureDevice.requestAccess(for: .video) { granted in
+                  continuation.resume(returning: granted)
+              }
+          }
+      }
+    
+
+    
+   
     
     func setupDualCamera() async throws {
-    
+        
         // 1. Check and request camera permissions (non-blocking)
-          let cameraAuthorizationStatus = AVCaptureDevice.authorizationStatus(for: .video)
-          
-          switch cameraAuthorizationStatus {
-          case .notDetermined:
-              // Request access if not determined
-              let granted = await AVCaptureDevice.requestAccess(for: .video)
-              guard granted else {
-                  throw CameraError.permissionDenied
-              }
-              
-          case .denied, .restricted:
-              throw CameraError.permissionDenied
-              
-          case .authorized:
-              break // Continue with setup
-              
-          @unknown default:
-              throw CameraError.unknownAuthorizationStatus
-          }
-        
-        try await Task.detached(priority: .userInitiated) {
-            if self.captureSession.isRunning {
-                self.captureSession.stopRunning()
+        let status = AVCaptureDevice.authorizationStatus(for: .video)
+        if status != .authorized {
+            let granted = await requestCameraPermission()
+            if !granted {
+                throw CameraError.permissionDenied
+            }
+            
+            try await Task.detached(priority: .userInitiated) {
+                if self.captureSession.isRunning {
+                    self.captureSession.stopRunning()
+                }
+                
+                self.captureSession.beginConfiguration()
+                defer { self.captureSession.commitConfiguration() }
+                //        captureSession.sessionPreset = .high
+                
+                // Setup inputs (front and back cameras)
+                guard let frontCamera = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front),
+                      let backCamera = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) else {
+                    throw NSError(domain: "com.aftersplit.error", code: 1, userInfo: [NSLocalizedDescriptionKey: "Could not find cameras"])
+                }
+                
+                self.frontCameraInput = try AVCaptureDeviceInput(device: frontCamera)
+                self.backCameraInput = try AVCaptureDeviceInput(device: backCamera)
+                
+                guard let frontInput = self.frontCameraInput, self.captureSession.canAddInput(frontInput),
+                      let backInput = self.backCameraInput, self.captureSession.canAddInput(backInput) else {
+                    throw NSError(domain: "com.aftersplit.error", code: 2, userInfo: [NSLocalizedDescriptionKey: "Could not add camera inputs to capture session"])
+                }
+                
+                self.captureSession.addInput(frontInput)
+                self.captureSession.addInput(backInput)
+                
+                // Setup outputs (photo and video)
+                guard self.captureSession.canAddOutput(self.photoOutput) else {
+                    throw NSError(domain: "com.aftersplit.error", code: 3, userInfo: [NSLocalizedDescriptionKey: "Could not add photo output to capture session"])
+                }
+                self.captureSession.addOutput(self.photoOutput)
+                
+                guard self.captureSession.canAddOutput(self.movieOutput) else {
+                    throw NSError(domain: "com.aftersplit.error", code: 4, userInfo: [NSLocalizedDescriptionKey: "Could not add movie output to capture session"])
+                }
+                self.captureSession.addOutput(self.movieOutput)
+                
+                // Set maximum duration for video recording (20 minutes)
+                self.movieOutput.maxRecordedDuration = CMTime(seconds: 20 * 60, preferredTimescale: 600)
+                
+                // Setup video preview layers
+                self.setupPreviewLayers()
+                
+                //        captureSession.commitConfiguration()
+                
+                // Start the session on a background thread
+                //        try await Task.detached {
+                //            self.captureSession.startRunning()
+            }.value
         }
-        
-            self.captureSession.beginConfiguration()
-            defer { self.captureSession.commitConfiguration() }
-//        captureSession.sessionPreset = .high
-        
-        // Setup inputs (front and back cameras)
-        guard let frontCamera = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front),
-              let backCamera = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) else {
-            throw NSError(domain: "com.aftersplit.error", code: 1, userInfo: [NSLocalizedDescriptionKey: "Could not find cameras"])
-        }
-        
-            self.frontCameraInput = try AVCaptureDeviceInput(device: frontCamera)
-            self.backCameraInput = try AVCaptureDeviceInput(device: backCamera)
-        
-            guard let frontInput = self.frontCameraInput, self.captureSession.canAddInput(frontInput),
-                  let backInput = self.backCameraInput, self.captureSession.canAddInput(backInput) else {
-            throw NSError(domain: "com.aftersplit.error", code: 2, userInfo: [NSLocalizedDescriptionKey: "Could not add camera inputs to capture session"])
-        }
-        
-            self.captureSession.addInput(frontInput)
-            self.captureSession.addInput(backInput)
-        
-        // Setup outputs (photo and video)
-            guard self.captureSession.canAddOutput(self.photoOutput) else {
-            throw NSError(domain: "com.aftersplit.error", code: 3, userInfo: [NSLocalizedDescriptionKey: "Could not add photo output to capture session"])
-        }
-            self.captureSession.addOutput(self.photoOutput)
-        
-            guard self.captureSession.canAddOutput(self.movieOutput) else {
-            throw NSError(domain: "com.aftersplit.error", code: 4, userInfo: [NSLocalizedDescriptionKey: "Could not add movie output to capture session"])
-        }
-            self.captureSession.addOutput(self.movieOutput)
-        
-        // Set maximum duration for video recording (20 minutes)
-            self.movieOutput.maxRecordedDuration = CMTime(seconds: 20 * 60, preferredTimescale: 600)
-        
-        // Setup video preview layers
-            self.setupPreviewLayers()
-        
-//        captureSession.commitConfiguration()
-        
-        // Start the session on a background thread
-//        try await Task.detached {
-//            self.captureSession.startRunning()
-        }.value
     }
+    
+    
+    
     
     private func setupPreviewLayers() {
         // Setup front camera preview layer
@@ -266,6 +270,7 @@ class CameraManager: NSObject, CameraManagerProtocol, AVCapturePhotoCaptureDeleg
         case inputConfigurationFailed
         case photoOutputFailed
         case videoOutputFailed
+        case setupFailed
         
         var errorDescription: String? {
             switch self {
@@ -281,6 +286,8 @@ class CameraManager: NSObject, CameraManagerProtocol, AVCapturePhotoCaptureDeleg
                 return "Failed to configure photo output."
             case .videoOutputFailed:
                 return "Failed to configure video output."
+            case .setupFailed:
+                return "Failed to configure camra."
             }
         }
     }

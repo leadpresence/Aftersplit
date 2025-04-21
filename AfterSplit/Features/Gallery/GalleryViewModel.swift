@@ -7,22 +7,22 @@ class GalleryViewModel: ObservableObject {
     @Published var selectedVideo: Video?
     @Published var error: Error?
     
-    private let cameraRepository: CameraRepositoryProtocol
+    private let cameraRepository: CameraRepositorySec
     
-    init(cameraRepository: CameraRepositoryProtocol) {
+    init(cameraRepository: CameraRepositorySec) {
         self.cameraRepository = cameraRepository
     }
     
     func loadMedia() {
         Task {
             do {
-                let fetchedPhotos = try await cameraRepository.fetchPhotos()
-                let fetchedVideos = try await cameraRepository.fetchVideos()
+                let fetchedPhotos = try await cameraRepository.getAllSavedMedia()
+                let fetchedVideos = try await cameraRepository.getAllSavedMedia()
                 
-                await MainActor.run {
-                    self.photos = fetchedPhotos
-                    self.videos = fetchedVideos
-                }
+//                await MainActor.run {
+//                    self.photos = fetchedPhotos
+//                    self.videos = fetchedVideos
+//                }
             } catch {
                 await MainActor.run {
                     self.error = error
