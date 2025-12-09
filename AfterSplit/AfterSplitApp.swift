@@ -5,16 +5,53 @@
 //  Created by Chibueze Felix on 02/03/2025.
 //
 
- 
 import SwiftData
 import SwiftUI
 
 @main
 struct MultiCameraApp: App {
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+    @StateObject private var subscriptionStateManager = SubscriptionStateManager.shared
+    
+    init() {
+        // Initialize Firebase
+        if AppConfig.firebaseEnabled {
+            FirebaseManager.shared.configure()
+        }
+        
+        // Initialize RevenueCat
+        let revenueCatAPIKey = AppConfig.revenueCatAPIKey
+        if !revenueCatAPIKey.isEmpty && revenueCatAPIKey != "YOUR_REVENUECAT_API_KEY" {
+            RevenueCatManager.shared.configure(apiKey: revenueCatAPIKey)
+        }
+        
+        // Initialize Superwall
+        let superwallAPIKey = AppConfig.superwallAPIKey
+        if !superwallAPIKey.isEmpty && superwallAPIKey != "YOUR_SUPERWALL_API_KEY" {
+            SuperwallManager.shared.configure(apiKey: superwallAPIKey)
+        }
+        
+        // Set up analytics
+        AnalyticsManager.shared.trackAppLaunch()
+    }
+    
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environmentObject(CameraViewModelSec())
+                .environmentObject(subscriptionStateManager)
+                .paywallPresentation()
+                .onAppear {
+                    // Check for subscription restoration
+                    Task {
+                        await subscriptionStateManager.refreshSubscriptionStatus()
+                    }
+                    
+                    // Check paywall trigger after onboarding
+                    if hasCompletedOnboarding {
+                        PaywallTriggerManager.shared.checkTriggerAfterOnboarding()
+                    }
+                }
         }
     }
 }
