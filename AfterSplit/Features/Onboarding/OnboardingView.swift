@@ -44,6 +44,10 @@ struct OnboardingView: View {
                 buttonTitle: "Get Started",
                 action: {
                     showOnboarding = false
+                    // Trigger paywall after onboarding
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        PaywallTriggerManager.shared.checkTriggerAfterOnboarding()
+                    }
                 }
             )
         }

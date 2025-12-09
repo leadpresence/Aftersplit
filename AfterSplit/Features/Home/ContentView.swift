@@ -11,6 +11,7 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject var viewModel: CameraViewModelSec
+    @StateObject private var subscriptionStateManager = SubscriptionStateManager.shared
     @State private var selectedTab = 0
     
     var body: some View {
@@ -26,10 +27,19 @@ struct ContentView: View {
                     Label("Gallery", systemImage: "photo.on.rectangle")
                 }
                 .tag(1)
+            
+            SettingsView()
+                .tabItem {
+                    Label("Settings", systemImage: "gearshape")
+                }
+                .tag(2)
         }
         .onAppear {
             // Load saved media when the app appears
             viewModel.loadSavedMedia()
+            
+            // Track app foregrounded
+            AnalyticsManager.shared.trackAppForegrounded()
         }
         .alert(item: Binding<AlertItem?>(
             get: { viewModel.errorMessage != nil ? AlertItem(message: viewModel.errorMessage!) : nil },
