@@ -25,15 +25,19 @@ struct PreviewLayerView: UIViewRepresentable {
     }
     
     func updateUIView(_ uiView: UIView, context: Context) {
-        if let previewLayer = previewLayer {
-            // Update frame if needed
-            if previewLayer.superlayer != uiView.layer {
-                previewLayer.removeFromSuperlayer()
-                previewLayer.frame = uiView.bounds
-                uiView.layer.addSublayer(previewLayer)
-            } else {
-                previewLayer.frame = uiView.bounds
-            }
+        guard let previewLayer = previewLayer else { return }
+        
+        // Update frame if needed
+        if previewLayer.superlayer != uiView.layer {
+            previewLayer.removeFromSuperlayer()
+            previewLayer.frame = uiView.bounds
+            uiView.layer.addSublayer(previewLayer)
+        } else {
+            // Animate frame changes smoothly
+            CATransaction.begin()
+            CATransaction.setAnimationDuration(0.2)
+            previewLayer.frame = uiView.bounds
+            CATransaction.commit()
         }
     }
 }

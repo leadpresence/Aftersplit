@@ -199,7 +199,8 @@ class VideoMixer {
         
         commandEncoder.endEncoding()
         commandBuffer.commit()
-        commandBuffer.waitUntilCompleted()
+        // Don't wait - let it complete asynchronously for better performance
+        // The pixel buffer will be valid once the command buffer completes
         
         return outputPixelBuffer
     }

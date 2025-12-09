@@ -8,9 +8,12 @@
 import CoreImage
 import CoreVideo
 import UIKit
+import Metal
 
 class FilterProcessor {
     private let context: CIContext
+    private var pixelBufferPoolCache: [String: CVPixelBufferPool] = [:]
+    private let cacheQueue = DispatchQueue(label: "com.aftersplit.filterProcessor.cache")
     
     init() {
         // Use Metal for better performance if available
@@ -47,10 +50,14 @@ class FilterProcessor {
         }
         
         // Render to new pixel buffer
+        guard let pool = getOrCreatePixelBufferPool(for: pixelBuffer) else {
+            return pixelBuffer
+        }
+        
         var outputPixelBuffer: CVPixelBuffer?
         let status = CVPixelBufferPoolCreatePixelBuffer(
             kCFAllocatorDefault,
-            createPixelBufferPool(for: pixelBuffer),
+            pool,
             &outputPixelBuffer
         )
         
@@ -96,31 +103,43 @@ class FilterProcessor {
         return UIImage(cgImage: cgImage)
     }
     
-    private func createPixelBufferPool(for pixelBuffer: CVPixelBuffer) -> CVPixelBufferPool {
+    private func getOrCreatePixelBufferPool(for pixelBuffer: CVPixelBuffer) -> CVPixelBufferPool? {
         let width = CVPixelBufferGetWidth(pixelBuffer)
         let height = CVPixelBufferGetHeight(pixelBuffer)
         let pixelFormat = CVPixelBufferGetPixelFormatType(pixelBuffer)
+        let cacheKey = "\(width)x\(height)_\(pixelFormat)"
         
-        let attributes: [String: Any] = [
-            kCVPixelBufferPixelFormatTypeKey as String: pixelFormat,
-            kCVPixelBufferWidthKey as String: width,
-            kCVPixelBufferHeightKey as String: height,
-            kCVPixelBufferIOSurfacePropertiesKey as String: [:]
-        ]
-        
-        let poolAttributes: [String: Any] = [
-            kCVPixelBufferPoolMinimumBufferCountKey as String: 3
-        ]
-        
-        var pool: CVPixelBufferPool?
-        CVPixelBufferPoolCreate(
-            kCFAllocatorDefault,
-            poolAttributes as NSDictionary?,
-            attributes as NSDictionary?,
-            &pool
-        )
-        
-        return pool!
+        return cacheQueue.sync {
+            if let cachedPool = pixelBufferPoolCache[cacheKey] {
+                return cachedPool
+            }
+            
+            let attributes: [String: Any] = [
+                kCVPixelBufferPixelFormatTypeKey as String: pixelFormat,
+                kCVPixelBufferWidthKey as String: width,
+                kCVPixelBufferHeightKey as String: height,
+                kCVPixelBufferIOSurfacePropertiesKey as String: [:]
+            ]
+            
+            let poolAttributes: [String: Any] = [
+                kCVPixelBufferPoolMinimumBufferCountKey as String: 3
+            ]
+            
+            var pool: CVPixelBufferPool?
+            let status = CVPixelBufferPoolCreate(
+                kCFAllocatorDefault,
+                poolAttributes as NSDictionary?,
+                attributes as NSDictionary?,
+                &pool
+            )
+            
+            guard status == kCVReturnSuccess, let createdPool = pool else {
+                return nil
+            }
+            
+            pixelBufferPoolCache[cacheKey] = createdPool
+            return createdPool
+        }
     }
 }
 

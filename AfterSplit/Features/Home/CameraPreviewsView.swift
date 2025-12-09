@@ -11,7 +11,6 @@ import SwiftUI
 
 struct CameraPreviewsView: View {
     @EnvironmentObject var viewModel: CameraViewModelSec
-    @State private var currentSplitStyle: SplitStyle = .straight
     
     var body: some View {
         GeometryReader { geometry in
@@ -33,14 +32,11 @@ struct CameraPreviewsView: View {
                     frontCameraOverlay(
                         previewLayer: frontPreviewLayer,
                         geometry: geometry,
-                        splitStyle: currentSplitStyle
+                        splitStyle: viewModel.currentSplitStyle
                     )
+                    .animation(.easeInOut(duration: 0.3), value: viewModel.currentSplitStyle)
                 }
             }
-        }
-        .onAppear {
-            // Get current split style from view model if available
-            // This will be updated when we add state management
         }
     }
     

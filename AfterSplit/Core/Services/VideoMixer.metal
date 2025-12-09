@@ -61,18 +61,21 @@ kernel void videoMixer(texture2d<half, access::read>     frontInput      [[ text
         case straight: {
             // Side-by-side split: left half is front, right half is back
             if (position.x < textureSize.x / 2.0) {
-                // Left half - front camera
-                float2 frontCoord = float2(position.x * 2.0, position.y);
+                // Left half - front camera (scale to fit)
+                uint2 frontCoord = uint2((position.x * 2.0 * frontInput.get_width()) / textureSize.x, 
+                                         (position.y * frontInput.get_height()) / textureSize.y);
                 if (frontCoord.x < frontInput.get_width() && frontCoord.y < frontInput.get_height()) {
-                    output = frontInput.read(uint2(frontCoord));
+                    output = frontInput.read(frontCoord);
                 } else {
                     output = half4(0.0);
                 }
             } else {
-                // Right half - back camera
-                float2 backCoord = float2((position.x - textureSize.x / 2.0) * 2.0, position.y);
-                if (backCoord.x < backInput.get_width() && backCoord.y < backInput.get_height()) {
-                    output = backInput.read(uint2(backCoord));
+                // Right half - back camera (scale to fit)
+                float2 backCoord = float2((position.x - textureSize.x / 2.0) * 2.0 * backInput.get_width() / textureSize.x, 
+                                          position.y * backInput.get_height() / textureSize.y);
+                uint2 backCoordInt = uint2(backCoord);
+                if (backCoordInt.x < backInput.get_width() && backCoordInt.y < backInput.get_height()) {
+                    output = backInput.read(backCoordInt);
                 } else {
                     output = half4(0.0);
                 }

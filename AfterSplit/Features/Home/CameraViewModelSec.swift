@@ -15,6 +15,7 @@ class CameraViewModelSec: ObservableObject {
     // Published properties
     @Published var isSessionSetup = false
     @Published var isRecording = false
+    @Published var recordingTime: TimeInterval = 0
     @Published var errorMessage: String?
     @Published var savedMedia: [MediaItem] = []
     @Published var isCameraAuthorized = false
@@ -24,6 +25,9 @@ class CameraViewModelSec: ObservableObject {
     // References for previews
     var frontPreviewLayer: AVCaptureVideoPreviewLayer?
     var backPreviewLayer: AVCaptureVideoPreviewLayer?
+    
+    // Timer for recording duration
+    private var recordingTimer: Timer?
     
     init() {
         let repository = DefaultCameraRepository()
@@ -58,7 +62,11 @@ class CameraViewModelSec: ObservableObject {
                 }
             } catch {
                 await MainActor.run {
-                    self.errorMessage = "Failed to setup camera: \(error.localizedDescription)"
+                    if let cameraError = error as? CameraError {
+                        self.errorMessage = cameraError.localizedDescription
+                    } else {
+                        self.errorMessage = "Failed to setup camera: \(error.localizedDescription)"
+                    }
                 }
             }
         } else {
@@ -85,7 +93,13 @@ class CameraViewModelSec: ObservableObject {
                 }
             } catch {
                 await MainActor.run {
-                    self.errorMessage = "Failed to capture photo: \(error.localizedDescription)"
+                    if let cameraError = error as? CameraError {
+                        self.errorMessage = cameraError.localizedDescription
+                    } else {
+                        self.errorMessage = "Failed to capture photo: \(error.localizedDescription)"
+                    }
+                    let generator = UINotificationFeedbackGenerator()
+                    generator.notificationOccurred(.error)
                 }
             }
         }
@@ -98,19 +112,60 @@ class CameraViewModelSec: ObservableObject {
                     _ = try await useCase.stopRecording()
                     await MainActor.run {
                         self.isRecording = false
+                        self.recordingTime = 0
+                        stopRecordingTimer()
                         loadSavedMedia()
                     }
                 } else {
                     try await useCase.startRecording()
                     await MainActor.run {
                         self.isRecording = true
+                        self.recordingTime = 0
+                        startRecordingTimer()
+                        // Haptic feedback
+                        let generator = UINotificationFeedbackGenerator()
+                        generator.notificationOccurred(.success)
                     }
                 }
             } catch {
                 await MainActor.run {
-                    self.errorMessage = "Recording error: \(error.localizedDescription)"
+                    if let cameraError = error as? CameraError {
+                        self.errorMessage = cameraError.localizedDescription
+                    } else {
+                        self.errorMessage = "Recording error: \(error.localizedDescription)"
+                    }
+                    let generator = UINotificationFeedbackGenerator()
+                    generator.notificationOccurred(.error)
                 }
             }
+        }
+    }
+    
+    private func startRecordingTimer() {
+        recordingTimer?.invalidate()
+        recordingTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
+            guard let self = self, self.isRecording else { return }
+            DispatchQueue.main.async {
+                self.recordingTime += 0.1
+            }
+        }
+    }
+    
+    private func stopRecordingTimer() {
+        recordingTimer?.invalidate()
+        recordingTimer = nil
+    }
+    
+    func formattedRecordingTime() -> String {
+        let totalSeconds = Int(recordingTime)
+        let hours = totalSeconds / 3600
+        let minutes = (totalSeconds % 3600) / 60
+        let seconds = totalSeconds % 60
+        
+        if hours > 0 {
+            return String(format: "%d:%02d:%02d", hours, minutes, seconds)
+        } else {
+            return String(format: "%02d:%02d", minutes, seconds)
         }
     }
     
@@ -125,16 +180,28 @@ class CameraViewModelSec: ObservableObject {
     }
     
     func updateSplitStyle(_ style: SplitStyle) {
+        guard currentSplitStyle != style else { return }
         currentSplitStyle = style
         if let repository = (useCase as? DefaultCameraUseCase)?.repository as? DefaultCameraRepository {
             repository.setSplitStyle(style)
         }
+        // Haptic feedback for style change
+        let generator = UISelectionFeedbackGenerator()
+        generator.selectionChanged()
     }
     
     func updateFilter(_ filter: Filter) {
+        guard currentFilter != filter else { return }
         currentFilter = filter
         if let repository = (useCase as? DefaultCameraUseCase)?.repository as? DefaultCameraRepository {
             repository.setFilter(filter)
         }
+        // Haptic feedback for filter change
+        let generator = UISelectionFeedbackGenerator()
+        generator.selectionChanged()
+    }
+    
+    deinit {
+        stopRecordingTimer()
     }
 }

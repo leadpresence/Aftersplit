@@ -38,11 +38,16 @@ class DefaultCameraRepository: CameraRepositorySec, AVCaptureVideoDataOutputSamp
     // State
     private var currentSplitStyle: SplitStyle = .straight
     private var currentFilter: Filter = .none
+    private var lastAppliedFilter: Filter = .none
     
     // Sample buffer tracking
     private var frontPixelBuffer: CVPixelBuffer?
     private var backPixelBuffer: CVPixelBuffer?
     private var renderingEnabled = true
+    
+    // Frame rate throttling for video processing
+    private var lastProcessedTime: CFTimeInterval = 0
+    private let targetFrameInterval: CFTimeInterval = 1.0 / 30.0 // 30 fps
     
     // Session observers
     private var keyValueObservations = [NSKeyValueObservation]()
@@ -624,11 +629,15 @@ class DefaultCameraRepository: CameraRepositorySec, AVCaptureVideoDataOutputSamp
         do {
             let fileManager = FileManager.default
             let documentsURL = getDocumentsDirectory()
-            let fileURLs = try fileManager.contentsOfDirectory(at: documentsURL, includingPropertiesForKeys: [.contentModificationDateKey], options: .skipsHiddenFiles)
+            let fileURLs = try fileManager.contentsOfDirectory(
+                at: documentsURL,
+                includingPropertiesForKeys: [.contentModificationDateKey, .fileSizeKey],
+                options: .skipsHiddenFiles
+            )
             
             return fileURLs.compactMap { url in
-                guard let attributes = try? fileManager.attributesOfItem(atPath: url.path),
-                      let modificationDate = attributes[.modificationDate] as? Date else {
+                guard let resourceValues = try? url.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey]),
+                      let modificationDate = resourceValues.contentModificationDate else {
                     return nil
                 }
                 
@@ -644,12 +653,11 @@ class DefaultCameraRepository: CameraRepositorySec, AVCaptureVideoDataOutputSamp
                         timestamp: modificationDate
                     )
                 } else if isVideo {
-                    // For videos, we might want to generate a thumbnail
-                    // This is a simplified version; in a real app, you'd want to generate actual thumbnails
+                    // For videos, generate thumbnail if needed
                     return MediaItem(
                         id: UUID(),
                         url: url,
-                        thumbnailUrl: nil,
+                        thumbnailUrl: generateVideoThumbnail(for: url),
                         type: .video,
                         timestamp: modificationDate
                     )
@@ -658,9 +666,29 @@ class DefaultCameraRepository: CameraRepositorySec, AVCaptureVideoDataOutputSamp
                 return nil
             }.sorted(by: { $0.timestamp > $1.timestamp })
         } catch {
-            print("Error getting saved media: \(error)")
+            print("Error getting saved media: \(error.localizedDescription)")
             return []
         }
+    }
+    
+    private func generateVideoThumbnail(for url: URL) -> URL? {
+        let asset = AVAsset(url: url)
+        let imageGenerator = AVAssetImageGenerator(asset: asset)
+        imageGenerator.appliesPreferredTrackTransform = true
+        
+        let time = CMTime(seconds: 0, preferredTimescale: 600)
+        
+        guard let cgImage = try? imageGenerator.copyCGImage(at: time, actualTime: nil),
+              let thumbnailData = UIImage(cgImage: cgImage).jpegData(compressionQuality: 0.7) else {
+            return nil
+        }
+        
+        let thumbnailURL = getDocumentsDirectory()
+            .appendingPathComponent("thumb_\(url.lastPathComponent)")
+            .appendingPathExtension("jpg")
+        
+        try? thumbnailData.write(to: thumbnailURL)
+        return thumbnailURL
     }
     
     func saveImage(_ image: UIImage, withName name: String) throws -> URL {
@@ -712,12 +740,23 @@ class DefaultCameraRepository: CameraRepositorySec, AVCaptureVideoDataOutputSamp
             return
         }
         
-        // Apply filter if needed
+        // Throttle processing to target frame rate
+        let currentTime = CACurrentMediaTime()
+        guard currentTime - lastProcessedTime >= targetFrameInterval else {
+            return
+        }
+        lastProcessedTime = currentTime
+        
+        // Apply filter only if it changed (optimization)
         var processedBuffer: CVPixelBuffer = pixelBuffer
-        if currentFilter != .none, let filterProcessor = filterProcessor {
+        if currentFilter != .none, currentFilter != lastAppliedFilter || lastAppliedFilter == .none,
+           let filterProcessor = filterProcessor {
             if let filtered = filterProcessor.applyFilter(currentFilter, to: pixelBuffer) {
                 processedBuffer = filtered
+                lastAppliedFilter = currentFilter
             }
+        } else if currentFilter == .none && lastAppliedFilter != .none {
+            lastAppliedFilter = .none
         }
         
         // Store pixel buffer based on which camera it came from
