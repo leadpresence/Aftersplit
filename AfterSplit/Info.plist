@@ -26,5 +26,28 @@
     <string>AfterSplit needs microphone access to record videos with sound</string>
     <key>NSCameraUsageDescription</key>
     <string>AfterSplit needs camera access to capture dual camera photos and videos</string>
+    <key>NSUserTrackingUsageDescription</key>
+    <string>AfterSplit uses tracking to provide personalized experiences and improve our services. You can opt out in Settings.</string>
+    <key>ITSAppUsesNonExemptEncryption</key>
+    <false/>
+    <key>NSPrivacyAccessedAPITypes</key>
+    <array>
+        <dict>
+            <key>NSPrivacyAccessedAPIType</key>
+            <string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+            <key>NSPrivacyAccessedAPITypeReasons</key>
+            <array>
+                <string>CA92.1</string>
+            </array>
+        </dict>
+        <dict>
+            <key>NSPrivacyAccessedAPIType</key>
+            <string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
+            <key>NSPrivacyAccessedAPITypeReasons</key>
+            <array>
+                <string>C617.1</string>
+            </array>
+        </dict>
+    </array>
 </dict>
 </plist>
