@@ -18,6 +18,8 @@ class CameraViewModelSec: ObservableObject {
     @Published var errorMessage: String?
     @Published var savedMedia: [MediaItem] = []
     @Published var isCameraAuthorized = false
+    @Published var currentSplitStyle: SplitStyle = .straight
+    @Published var currentFilter: Filter = .none
     
     // References for previews
     var frontPreviewLayer: AVCaptureVideoPreviewLayer?
@@ -46,6 +48,9 @@ class CameraViewModelSec: ObservableObject {
                     try repository.setupCaptureSession()
                     
                     await MainActor.run {
+                        // Get preview layers from repository
+                        self.frontPreviewLayer = repository.getFrontPreviewLayer()
+                        self.backPreviewLayer = repository.getBackPreviewLayer()
                         self.isSessionSetup = true
                     }
                     
@@ -116,6 +121,20 @@ class CameraViewModelSec: ObservableObject {
             DispatchQueue.main.async {
                 self?.savedMedia = media
             }
+        }
+    }
+    
+    func updateSplitStyle(_ style: SplitStyle) {
+        currentSplitStyle = style
+        if let repository = (useCase as? DefaultCameraUseCase)?.repository as? DefaultCameraRepository {
+            repository.setSplitStyle(style)
+        }
+    }
+    
+    func updateFilter(_ filter: Filter) {
+        currentFilter = filter
+        if let repository = (useCase as? DefaultCameraUseCase)?.repository as? DefaultCameraRepository {
+            repository.setFilter(filter)
         }
     }
 }

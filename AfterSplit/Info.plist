@@ -25,6 +25,6 @@
     <key>NSMicrophoneUsageDescription</key>
     <string>AfterSplit needs microphone access to record videos with sound</string>
     <key>NSCameraUsageDescription</key>
-    <string>"AfterSplit needs camera access to capture dual camera photos and videos</string>
+    <string>AfterSplit needs camera access to capture dual camera photos and videos</string>
 </dict>
 </plist>

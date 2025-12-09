@@ -5,6 +5,7 @@
 //  Created by Kehinde Akeredolu on 21/04/2025.
 //
 import SwiftUI
+import AVFoundation
 
 protocol CameraRepositorySec {
     func setupCaptureSession() throws
@@ -16,4 +17,8 @@ protocol CameraRepositorySec {
     func getAllSavedMedia() -> [MediaItem]
     func saveImage(_ image: UIImage, withName name: String) throws -> URL
     func getDocumentsDirectory() -> URL
+    func getFrontPreviewLayer() -> AVCaptureVideoPreviewLayer?
+    func getBackPreviewLayer() -> AVCaptureVideoPreviewLayer?
+    func setSplitStyle(_ style: SplitStyle)
+    func setFilter(_ filter: Filter)
 }
